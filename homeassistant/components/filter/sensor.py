@@ -666,16 +666,19 @@ class TimeSMAFilter(Filter, SensorEntity):
         self.queue.append(copy(new_state))
 
         moving_sum: float = 0
+        time_sum_sec: float = 0 # holds the actual time in seconds between the first state or last leaked state and the current new_state
         start = new_state.timestamp - self._time_window
         prev_state = self.last_leak if self.last_leak is not None else self.queue[0]
         for state in self.queue:
             # We can cast safely here thanks to self._only_numbers = True
             prev_state_value = cast(float, prev_state.state)
-            moving_sum += (state.timestamp - start).total_seconds() * prev_state_value
+            interval_sec = (state.timestamp - start).total_seconds() # seconds between the prev and current state
+            moving_sum +=  interval_sec * prev_state_value
+            time_sum_sec += interval_sec 
             start = state.timestamp
             prev_state = state
 
-        new_state.state = moving_sum / self._time_window.total_seconds()
+        new_state.state = moving_sum / time_sum_sec
 
         return new_state
 
